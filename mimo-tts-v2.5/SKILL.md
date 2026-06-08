@@ -1,6 +1,6 @@
 ---
 name: mimo-tts-v2.5
-description: "Xiaomi MiMo V2.5 TTS — 非传统 TTS，而是语音表演模型。支持自然语言风格控制、导演模式（角色/场景/指导）、音频标签（情绪/气声/停顿）、音色设计、音色复刻。适配脚本位于 /usr/local/bin/mimo_tts.py，Hermes 配置见 tts.providers.mimo.command"
+description: "Xiaomi MiMo V2.5 TTS — 非传统 TTS，而是语音表演模型。支持自然语言风格控制、导演模式（角色/场景/指导）、音频标签（情绪/气声/停顿）、音色设计、音色复刻。适配脚本位于 scripts/mimo_tts.py，Hermes 配置见 tts.providers.mimo.command"
 version: 1.5.0
 author: MiMo Team / Hermes OSS
 ---
@@ -8,6 +8,15 @@ author: MiMo Team / Hermes OSS
 # MiMo-V2.5-TTS 语音表演模型
 
 **MiMo-V2.5-TTS 是一款语音表演模型**，它更像一位数字声优。模型能够理解复杂的自然语言指令来**表演**文本，支持多风格切换、复合情绪表现及字级细粒度气息控制。
+
+## 🛠 环境预检（Prerequisites）
+
+新 Agent clone 本仓库后，运行 TTS 前确保以下项就绪：
+
+1. **API Key**：在 `~/.hermes/.env` 中放置 `XIAOMI_API_KEY="你的key"`，或设置环境变量 `XIAOMI_API_KEY`。
+2. **Python 依赖**：`pip install openai numpy soundfile`
+3. **ffmpeg**：`apt install -y ffmpeg`（用于 MP3 格式输出）
+4. **运行脚本**：`scripts/mimo_tts.py` 是核心适配器，直接 `python3 scripts/mimo_tts.py --text "..." --output-path out.wav` 即可调用。
 
 ## 核心架构
 
@@ -57,12 +66,12 @@ audio: {format, voice} → 输出参数与基础音色
 
 ⚠️ **调用规范**：
 - 该模型**不支持** `--voice` 参数。传入 voice 字段会导致 400 错误。
-- 必须使用 `terminal()` 直接调用 `/usr/local/bin/mimo_tts.py`。
+- 必须使用 `terminal()` 直接调用适配脚本 `scripts/mimo_tts.py`。
 - 适配脚本已包含自动容错逻辑，但手动构造请求时请务必移除 voice 字段。
 
 **调用示例**：
 ```bash
-/usr/local/bin/mimo_tts.py \
+python3 scripts/mimo_tts.py \
   --model mimo-v2.5-tts-voicedesign \
   --text "欢迎来到智能语音实验室。" \
   --output-path /tmp/new_voice.mp3 \
@@ -75,8 +84,15 @@ audio: {format, voice} → 输出参数与基础音色
 **Hermes 默认配置示例**：
 ```bash
 # 设置为 MP3 格式输出，并定义全局基础风格
-hermes config set tts.providers.mimo.command "/usr/local/bin/mimo_tts.py --input-path {input_path} --output-path {output_path} --voice 茉莉 --model mimo-v2.5-tts --format mp3 --style '自然清晰的播报语气，语速平稳'"
+hermes config set tts.providers.mimo.command "python3 scripts/mimo_tts.py --input-path {input_path} --output-path {output_path} --voice 茉莉 --model mimo-v2.5-tts --format mp3 --style '自然清晰的播报语气，语速平稳'"
 ```
+
+## 5. 仓库脚本说明
+
+适配脚本 `scripts/mimo_tts.py` 封装了 MiMo V2.5 的 OpenAI 兼容 API 调用，支持：
+- **参数**：`--text`, `--input-path`, `--output-path`, `--voice`, `--model`, `--style`, `--format` (wav/mp3/pcm16), `--optimize-preview`, `--stream`
+- **API Key 来源**：优先 `XIAOMI_API_KEY` 环境变量，其次 `~/.hermes/.env` 中的 `XIAOMI_API_KEY=` 行
+- **依赖**：`openai` Python 包, `numpy` (流式模式), `soundfile` (流式模式), `ffmpeg` (mp3 输出)
 
 ## ⚠️ 常见陷阱与解决
 
@@ -91,3 +107,10 @@ hermes config set tts.providers.mimo.command "/usr/local/bin/mimo_tts.py --input
 | `mimo-v2.5-tts` | 基础模型，使用预置精品音色（如：茉莉、冰糖、苏打）。 |
 | `mimo-v2.5-tts-voicedesign` | 文本定制音色（无需样本）。 |
 | `mimo-v2.5-tts-voiceclone` | 样本复刻音色。 |
+
+## 📦 独立 Skill 仓库
+
+本 Skill 已拆分为独立 Git 仓库，方便版本管理和共享：
+- **MiMo TTS**: `https://github.com/alen123222/hermes-mimo-tts`
+
+本地仍通过 `~/.hermes/skills/creative/mimo-tts-v2.5/` 目录访问。
